@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            id="pm.eclipse.shutdownbutton.Shutdown"
+            name="Shutdown"
+            categoryId="org.eclipse.debug.ui.category.run"
+            defaultHandler="pm.eclipse.shutdownbutton.ShutdownCommandHandler">
+      </command>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.commandImages">
+      <image
+            commandId="pm.eclipse.shutdownbutton.Shutdown"
+            icon="icons/shutdown.png">
+      </image>
+   </extension>
+
+</plugin>
