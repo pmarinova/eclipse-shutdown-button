@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="pm.eclipse.shutdownbutton"
+      label="Shutdown Button"
+      version="1.0.0.qualifier">
+
+   <description>
+      Shutdown button plug-in.
+   </description>
+
+   <plugin
+         id="pm.eclipse.shutdownbutton"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>

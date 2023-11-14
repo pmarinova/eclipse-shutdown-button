@@ -6,27 +6,23 @@
     <groupId>pm.eclipse.shutdownbutton</groupId>
     <artifactId>pm.eclipse.shutdownbutton.parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-	<packaging>pom</packaging>
+    <packaging>pom</packaging>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <tycho.version>2.7.5</tycho.version>
+        <maven.compiler.release>11</maven.compiler.release>
+        <tycho.version>4.0.4</tycho.version>
     </properties>
-
-    <repositories>
-        <repository>
-            <id>eclipse_4.17_2020-09</id>
-            <layout>p2</layout>
-            <url>https://download.eclipse.org/eclipse/updates/4.17/</url>
-        </repository>
-    </repositories> 
 
     <modules>
         <module>pm.eclipse.shutdownbutton</module>
+        <module>pm.eclipse.shutdownbutton.feature</module>
+        <module>pm.eclipse.shutdownbutton.p2</module>
+        <module>pm.eclipse.shutdownbutton.target</module>
     </modules>
 
     <build>
-        <plugins>          
+        <plugins>
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>tycho-maven-plugin</artifactId>
@@ -37,6 +33,34 @@
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>target-platform-configuration</artifactId>
                 <version>${tycho.version}</version>
+                <configuration>
+                    <executionEnvironment>JavaSE-11</executionEnvironment>
+                    <target>
+                        <artifact>
+                            <groupId>pm.eclipse.shutdownbutton</groupId>
+                            <artifactId>pm.eclipse.shutdownbutton.target</artifactId>
+                            <version>${project.version}</version>
+                            <classifier>eclipse_4.17</classifier>
+                        </artifact>
+                    </target>
+                    <environments>
+                        <environment>
+                            <os>linux</os>
+                            <ws>gtk</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>win32</os>
+                            <ws>win32</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>macosx</os>
+                            <ws>cocoa</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                    </environments>
+                </configuration>
             </plugin>
         </plugins>
     </build>
