@@ -20,4 +20,33 @@
       </image>
    </extension>
 
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="toolbar:org.eclipse.debug.ui.main.toolbar?after=threadGroup">
+         <command
+               commandId="pm.eclipse.shutdownbutton.Shutdown"
+               style="push">
+         </command>
+      </menuContribution>
+   </extension>
+
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="pm.eclipse.shutdownbutton.preferences.PreferenceInitializer">
+      </initializer>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            id="pm.eclipse.shutdownbutton.preferences"
+            name="Shutdown Button"
+            class="pm.eclipse.shutdownbutton.preferences.PreferencePage"
+            category="org.eclipse.debug.ui.DebugPreferencePage">
+      </page>
+   </extension>
+
 </plugin>
