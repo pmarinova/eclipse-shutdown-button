@@ -40,7 +40,7 @@
                             <groupId>pm.eclipse.shutdownbutton</groupId>
                             <artifactId>pm.eclipse.shutdownbutton.target</artifactId>
                             <version>${project.version}</version>
-                            <classifier>eclipse_4.17</classifier>
+                            <classifier>eclipse_4.23</classifier>
                         </artifact>
                     </target>
                     <environments>
