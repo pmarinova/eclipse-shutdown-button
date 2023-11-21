@@ -11,6 +11,7 @@ import org.apache.commons.exec.Executor;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.ICoreRunnable;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.debug.core.model.IProcess;
 
@@ -46,24 +47,20 @@ public class ShutdownJob implements ICoreRunnable {
 	@Override
 	public void run(IProgressMonitor monitor) throws CoreException {
 		
-		Map<String,String> variables = new HashMap<>();
-		variables.put("pid", this.targetProcess.getAttribute(IProcess.ATTR_PROCESS_ID));
-		
-		CommandLine cmdLine = CommandLine.parse(this.shutdownCommand, variables);
+		CommandLine cmdLine = processShutdownCommand();
 		String cmdLineString = String.join(" ", cmdLine.toStrings());
 		
-		ExecuteWatchdog watchdog = new ExecuteWatchdog(this.shutdownTimeout);
+		String taskName = String.format("Executing command '%s'", cmdLineString);
+		monitor.beginTask(taskName, IProgressMonitor.UNKNOWN);
 		
 		try {
-			String taskName = String.format("Executing command '%s'", cmdLineString);
-			monitor.beginTask(taskName, IProgressMonitor.UNKNOWN);
-			
 			Executor exec = new DefaultExecutor();
-			exec.setWatchdog(watchdog);
+			exec.setWatchdog(new ExecuteWatchdog(this.shutdownTimeout));
 			exec.execute(cmdLine);
 			
 		} catch (IOException e) {
-			e.printStackTrace(); //TODO
+			String message = "Shutdown command failed";
+			throw new CoreException(Status.error(message, e));
 		} finally {
 			monitor.done();
 		}
@@ -73,9 +70,23 @@ public class ShutdownJob implements ICoreRunnable {
 			IProcess targetProcess, 
 			String shutdownCommand, 
 			int shutdownTimeout) {
-		Job job = Job.create("Shutting down...", new ShutdownJob(
+		Job job = Job.create("Process shutdown", new ShutdownJob(
 				targetProcess, shutdownCommand, shutdownTimeout));
 		job.setUser(true);
 		job.schedule();
+	}
+	
+	private CommandLine processShutdownCommand() throws CoreException {
+		Map<String,String> variables = new HashMap<>();
+		variables.put("pid", this.targetProcess.getAttribute(IProcess.ATTR_PROCESS_ID));
+		
+		try {
+			CommandLine cmdLine = CommandLine.parse(this.shutdownCommand, variables);
+			cmdLine.toStrings();
+			return cmdLine;
+		} catch (Exception e) {
+			String message = String.format("Invalid shutdown command:\n\"%s\"", this.shutdownCommand);
+			throw new CoreException(Status.error(message, e));
+		}
 	}
 }
