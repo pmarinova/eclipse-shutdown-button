@@ -44,16 +44,7 @@ public class ShutdownCommandHandler extends DebugCommandHandler {
 	
 	private void shutdownProcess(IProcess process) throws ExecutionException {
 		Preferences prefs = Preferences.getPreferences();
-		String shutdownCommand = prefs.getShutdownCommand();
-		int shutdownTimeout = prefs.getShutdownTimeout();
-		
-		if (shutdownCommand.isEmpty())
-			throw new ExecutionException("Shutdown command not defined.");
-		
-		String processId = process.getAttribute(IProcess.ATTR_PROCESS_ID);
-		shutdownCommand = shutdownCommand.replace("${pid}", processId); //TODO
-		
-		ShutdownJob.run(shutdownCommand, shutdownTimeout);
+		ShutdownJob.run(process, prefs.getShutdownCommand(), prefs.getShutdownTimeout());
 	}
 	
 	private IDebugContextService getContextService(IWorkbenchWindow window) {
