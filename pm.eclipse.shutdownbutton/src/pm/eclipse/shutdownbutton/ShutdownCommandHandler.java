@@ -1,5 +1,7 @@
 package pm.eclipse.shutdownbutton;
 
+import java.util.Map;
+
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.runtime.IAdaptable;
@@ -11,12 +13,18 @@ import org.eclipse.debug.ui.contexts.IDebugContextService;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.commands.ICommandService;
+import org.eclipse.ui.commands.IElementUpdater;
 import org.eclipse.ui.handlers.HandlerUtil;
+import org.eclipse.ui.menus.UIElement;
 
 import pm.eclipse.shutdownbutton.preferences.Preferences;
 
-public class ShutdownCommandHandler extends DebugCommandHandler {
+public class ShutdownCommandHandler extends DebugCommandHandler implements IElementUpdater {
 
+	public static final String COMMAND_ID = "pm.eclipse.shutdownbutton.Shutdown";
+	
 	@Override
 	protected Class<ITerminateHandler> getCommandType() {
 		return ITerminateHandler.class;
@@ -26,25 +34,47 @@ public class ShutdownCommandHandler extends DebugCommandHandler {
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		IWorkbenchWindow window = HandlerUtil.getActiveWorkbenchWindow(event);
 		if (window == null) {
-			throw new ExecutionException("No active workbench window."); //$NON-NLS-1$
+			throw new ExecutionException("No active workbench window");
 		}
 
+		IProcess process = getSelectedProcess(window);
+		if (process == null) {
+			throw new ExecutionException("No selected process");
+		}
+		
+		Preferences prefs = Preferences.getPreferences();
+		ShutdownJob.run(process, prefs.getShutdownCommand(), prefs.getShutdownTimeout());
+
+		return null;
+	}
+	
+	@Override
+	public void setEnabled(Object evaluationContext) {
+		super.setEnabled(evaluationContext);
+		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+		ICommandService commandService = window.getService(ICommandService.class);
+		commandService.refreshElements(ShutdownCommandHandler.COMMAND_ID, null); // this will trigger a call to updateElement()
+	}
+	
+	@Override
+	@SuppressWarnings("rawtypes")
+	public void updateElement(UIElement element, Map parameters) {
+		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+		IProcess process = getSelectedProcess(window);
+		String tooltip = process != null ? "Shutdown process " + process.getLabel() : "Shutdown";
+		element.setTooltip(tooltip);
+	}
+	
+	private IProcess getSelectedProcess(IWorkbenchWindow window) {
 		ISelection selection = getContextService(window).getActiveContext();
 		if (selection instanceof IStructuredSelection && isEnabled()) {
 			IStructuredSelection ss = (IStructuredSelection)selection;
 			if (ss.getFirstElement() instanceof IAdaptable) {
 				IAdaptable adaptable = (IAdaptable)ss.getFirstElement();
-				IProcess process = adaptable.getAdapter(IProcess.class);
-				shutdownProcess(process);
+				return adaptable.getAdapter(IProcess.class);
 			}
 		}
-
 		return null;
-	}
-	
-	private void shutdownProcess(IProcess process) throws ExecutionException {
-		Preferences prefs = Preferences.getPreferences();
-		ShutdownJob.run(process, prefs.getShutdownCommand(), prefs.getShutdownTimeout());
 	}
 	
 	private IDebugContextService getContextService(IWorkbenchWindow window) {
