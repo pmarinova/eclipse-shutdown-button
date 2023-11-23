@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecuteResultHandler;
@@ -63,7 +64,9 @@ public class ShutdownJob implements ICoreRunnable {
 			executor.setWatchdog(watchdog);
 			executor.execute(cmdLine, resultHandler);
 			
-			waitForShutdown(this.targetProcess, this.shutdownTimeout, monitor);	
+			waitForShutdown(this.targetProcess, this.shutdownTimeout, () -> {
+				return monitor.isCanceled() || (resultHandler.hasResult() && resultHandler.getExitValue() != 0);
+			});	
 			
 			if (!this.targetProcess.isTerminated()) {
 				if (monitor.isCanceled()) {
@@ -71,6 +74,10 @@ public class ShutdownJob implements ICoreRunnable {
 					watchdog.destroyProcess();
 					resultHandler.waitFor();
 					return;
+				} else if (resultHandler.getExitValue() != 0) {
+					// shutdown process exited with error
+					String error = String.format("Shutdown command failed (exit code %d)", resultHandler.getExitValue());
+					throw new CoreException(Status.error(error));
 				} else {
 					// shutdown timed out, show the timeout error to the user
 					throw new CoreException(Status.error("Shutdown timeout"));
@@ -110,11 +117,11 @@ public class ShutdownJob implements ICoreRunnable {
 		}
 	}
 	
-	private static void waitForShutdown(IProcess process, int timeout, IProgressMonitor monitor) throws InterruptedException {
+	private static void waitForShutdown(IProcess process, int timeout, BooleanSupplier stopWaiting) throws InterruptedException {
 		long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeout);
 		long startTime = System.nanoTime();
 		long remainingTime = timeoutNanos;
-		while (!process.isTerminated() && !monitor.isCanceled() && remainingTime > 0) {
+		while (!process.isTerminated() && !stopWaiting.getAsBoolean() && remainingTime > 0) {
 			Thread.sleep(100); // wait for graceful shutdown
 			remainingTime = timeoutNanos - (System.nanoTime() - startTime);
 		}
