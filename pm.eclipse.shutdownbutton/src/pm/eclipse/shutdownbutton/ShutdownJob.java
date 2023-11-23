@@ -3,8 +3,10 @@ package pm.eclipse.shutdownbutton;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.Executor;
@@ -54,13 +56,31 @@ public class ShutdownJob implements ICoreRunnable {
 		monitor.beginTask(taskName, IProgressMonitor.UNKNOWN);
 		
 		try {
-			Executor exec = new DefaultExecutor();
-			exec.setWatchdog(new ExecuteWatchdog(this.shutdownTimeout));
-			exec.execute(cmdLine);
+			Executor executor = new DefaultExecutor();
+			ExecuteWatchdog watchdog = new ExecuteWatchdog(ExecuteWatchdog.INFINITE_TIMEOUT);
+			DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
+			
+			executor.setWatchdog(watchdog);
+			executor.execute(cmdLine, resultHandler);
+			
+			waitForShutdown(this.targetProcess, this.shutdownTimeout, monitor);	
+			
+			if (!this.targetProcess.isTerminated()) {
+				if (monitor.isCanceled()) {
+					// shutdown cancelled, kill shutdown process and finish job
+					watchdog.destroyProcess();
+					resultHandler.waitFor();
+					return;
+				} else {
+					// shutdown timed out, show the timeout error to the user
+					throw new CoreException(Status.error("Shutdown timeout"));
+				} 
+			}
 			
 		} catch (IOException e) {
-			String message = "Shutdown command failed";
-			throw new CoreException(Status.error(message, e));
+			throw new CoreException(Status.error("Shutdown command failed", e));
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		} finally {
 			monitor.done();
 		}
@@ -70,7 +90,7 @@ public class ShutdownJob implements ICoreRunnable {
 			IProcess targetProcess, 
 			String shutdownCommand, 
 			int shutdownTimeout) {
-		Job job = Job.create("Process shutdown", new ShutdownJob(
+		Job job = Job.create("Shutdown process", new ShutdownJob(
 				targetProcess, shutdownCommand, shutdownTimeout));
 		job.setUser(true);
 		job.schedule();
@@ -87,6 +107,16 @@ public class ShutdownJob implements ICoreRunnable {
 		} catch (Exception e) {
 			String message = String.format("Invalid shutdown command:\n\"%s\"", this.shutdownCommand);
 			throw new CoreException(Status.error(message, e));
+		}
+	}
+	
+	private static void waitForShutdown(IProcess process, int timeout, IProgressMonitor monitor) throws InterruptedException {
+		long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeout);
+		long startTime = System.nanoTime();
+		long remainingTime = timeoutNanos;
+		while (!process.isTerminated() && !monitor.isCanceled() && remainingTime > 0) {
+			Thread.sleep(100); // wait for graceful shutdown
+			remainingTime = timeoutNanos - (System.nanoTime() - startTime);
 		}
 	}
 }
