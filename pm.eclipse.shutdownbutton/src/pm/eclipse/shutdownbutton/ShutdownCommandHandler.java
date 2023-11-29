@@ -5,6 +5,7 @@ import java.util.Map;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.commands.ITerminateHandler;
 import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.debug.ui.DebugUITools;
@@ -69,7 +70,11 @@ public class ShutdownCommandHandler extends DebugCommandHandler implements IElem
 		ISelection selection = getContextService(window).getActiveContext();
 		if (selection instanceof IStructuredSelection && isEnabled()) {
 			IStructuredSelection ss = (IStructuredSelection)selection;
-			if (ss.getFirstElement() instanceof IAdaptable) {
+			Object element = ss.getFirstElement();
+			if (element instanceof ILaunch) {
+				ILaunch launch = (ILaunch)element;
+				return launch.getProcesses().length > 0 ? launch.getProcesses()[0] : null;
+			} else if (element instanceof IAdaptable) {
 				IAdaptable adaptable = (IAdaptable)ss.getFirstElement();
 				return adaptable.getAdapter(IProcess.class);
 			}
