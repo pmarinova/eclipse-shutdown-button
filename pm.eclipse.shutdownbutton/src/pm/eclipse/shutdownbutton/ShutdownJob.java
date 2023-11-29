@@ -7,9 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecuteResultHandler;
 import org.apache.commons.exec.DefaultExecutor;
-import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.Executor;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.ICoreRunnable;
@@ -50,38 +48,21 @@ public class ShutdownJob implements ICoreRunnable {
 	@Override
 	public void run(IProgressMonitor monitor) throws CoreException {
 		
-		CommandLine cmdLine = processShutdownCommand();
-		String cmdLineString = String.join(" ", cmdLine.toStrings());
-		
-		String taskName = String.format("Executing command '%s'", cmdLineString);
-		monitor.beginTask(taskName, IProgressMonitor.UNKNOWN);
+		monitor.beginTask("Shutdown", IProgressMonitor.UNKNOWN);
 		
 		try {
+			CommandLine cmdLine = processShutdownCommand();
+			String cmdLineString = String.join(" ", cmdLine.toStrings());
+			monitor.subTask(String.format("Executing command '%s'", cmdLineString));
+			
 			Executor executor = new DefaultExecutor();
-			ExecuteWatchdog watchdog = new ExecuteWatchdog(ExecuteWatchdog.INFINITE_TIMEOUT);
-			DefaultExecuteResultHandler resultHandler = new DefaultExecuteResultHandler();
+			executor.execute(cmdLine);
 			
-			executor.setWatchdog(watchdog);
-			executor.execute(cmdLine, resultHandler);
+			monitor.subTask("Waiting for target process to shutdown");
+			waitForShutdown(this.targetProcess, this.shutdownTimeout, () -> monitor.isCanceled());
 			
-			waitForShutdown(this.targetProcess, this.shutdownTimeout, () -> {
-				return monitor.isCanceled() || (resultHandler.hasResult() && resultHandler.getExitValue() != 0);
-			});	
-			
-			if (!this.targetProcess.isTerminated()) {
-				if (monitor.isCanceled()) {
-					// shutdown cancelled, kill shutdown process and finish job
-					watchdog.destroyProcess();
-					resultHandler.waitFor();
-					return;
-				} else if (resultHandler.getExitValue() != 0) {
-					// shutdown process exited with error
-					String error = String.format("Shutdown command failed (exit code %d)", resultHandler.getExitValue());
-					throw new CoreException(Status.error(error));
-				} else {
-					// shutdown timed out, show the timeout error to the user
-					throw new CoreException(Status.error("Shutdown timeout"));
-				} 
+			if (!this.targetProcess.isTerminated() && !monitor.isCanceled()) {
+				throw new CoreException(Status.error("Shutdown timeout"));
 			}
 			
 		} catch (IOException e) {
