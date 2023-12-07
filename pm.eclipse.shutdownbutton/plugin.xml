@@ -3,6 +3,13 @@
 <plugin>
 
    <extension
+         point="org.eclipse.ui.startup">
+      <startup
+            class="pm.eclipse.shutdownbutton.ShutdownButtonStartup">
+      </startup>
+   </extension>
+
+   <extension
          point="org.eclipse.ui.commands">
       <command
             id="pm.eclipse.shutdownbutton.Shutdown"
