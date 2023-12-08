@@ -2,14 +2,16 @@ package pm.eclipse.shutdownbutton;
 
 import java.util.Map;
 
+import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.debug.core.ILaunch;
-import org.eclipse.debug.core.commands.ITerminateHandler;
 import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.debug.ui.DebugUITools;
-import org.eclipse.debug.ui.actions.DebugCommandHandler;
+import org.eclipse.debug.ui.contexts.DebugContextEvent;
+import org.eclipse.debug.ui.contexts.IDebugContextListener;
+import org.eclipse.debug.ui.contexts.IDebugContextManager;
 import org.eclipse.debug.ui.contexts.IDebugContextService;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -22,13 +24,23 @@ import org.eclipse.ui.menus.UIElement;
 
 import pm.eclipse.shutdownbutton.preferences.Preferences;
 
-public class ShutdownCommandHandler extends DebugCommandHandler implements IElementUpdater {
-
+public class ShutdownCommandHandler extends AbstractHandler implements IElementUpdater {
+	
 	public static final String COMMAND_ID = "pm.eclipse.shutdownbutton.Shutdown";
 	
+	private final IDebugContextListener debugContextListener = (DebugContextEvent e) -> {	
+		updateEnabledState(e.getContext());
+		updateCommand();
+	};
+	
+	public ShutdownCommandHandler() {
+		setBaseEnabled(false);
+		getDebugContextManager().addDebugContextListener(this.debugContextListener);
+	}
+	
 	@Override
-	protected Class<ITerminateHandler> getCommandType() {
-		return ITerminateHandler.class;
+	public void dispose() {
+		getDebugContextManager().removeDebugContextListener(this.debugContextListener);
 	}
 
 	@Override
@@ -37,21 +49,26 @@ public class ShutdownCommandHandler extends DebugCommandHandler implements IElem
 		if (window == null) {
 			throw new ExecutionException("No active workbench window");
 		}
-
-		IProcess process = getSelectedProcess(window);
+		
+		ISelection selection = getDebugContextService(window).getActiveContext();
+		IProcess process = getSelectedProcess(selection);
 		if (process == null) {
 			throw new ExecutionException("No selected process");
 		}
 		
 		Preferences prefs = Preferences.getPreferences();
 		ShutdownJob.run(process, prefs.getShutdownCommand(), prefs.getShutdownTimeout());
-
+		
 		return null;
 	}
+
+	private void updateEnabledState(ISelection selection) {
+		IProcess process = getSelectedProcess(selection);
+		boolean enabled = (process != null) ? process.canTerminate() : false;
+		setBaseEnabled(enabled);
+	}
 	
-	@Override
-	public void setEnabled(Object evaluationContext) {
-		super.setEnabled(evaluationContext);
+	private void updateCommand() {
 		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
 		ICommandService commandService = window.getService(ICommandService.class);
 		commandService.refreshElements(ShutdownCommandHandler.COMMAND_ID, null); // this will trigger a call to updateElement()
@@ -61,14 +78,14 @@ public class ShutdownCommandHandler extends DebugCommandHandler implements IElem
 	@SuppressWarnings("rawtypes")
 	public void updateElement(UIElement element, Map parameters) {
 		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-		IProcess process = getSelectedProcess(window);
-		String tooltip = process != null ? "Shutdown process " + process.getLabel() : "Shutdown";
+		ISelection selection = getDebugContextService(window).getActiveContext();
+		IProcess process = getSelectedProcess(selection);
+		String tooltip = (process != null && process.canTerminate()) ? "Shutdown process " + process.getLabel() : "Shutdown";
 		element.setTooltip(tooltip);
 	}
 	
-	private IProcess getSelectedProcess(IWorkbenchWindow window) {
-		ISelection selection = getContextService(window).getActiveContext();
-		if (selection instanceof IStructuredSelection && isEnabled()) {
+	private IProcess getSelectedProcess(ISelection selection) {
+		if ((selection instanceof IStructuredSelection)) {
 			IStructuredSelection ss = (IStructuredSelection)selection;
 			Object element = ss.getFirstElement();
 			if (element instanceof ILaunch) {
@@ -82,7 +99,11 @@ public class ShutdownCommandHandler extends DebugCommandHandler implements IElem
 		return null;
 	}
 	
-	private IDebugContextService getContextService(IWorkbenchWindow window) {
-		return DebugUITools.getDebugContextManager().getContextService(window);
+	private static IDebugContextManager getDebugContextManager() {
+		return DebugUITools.getDebugContextManager();
+	}
+	
+	private static IDebugContextService getDebugContextService(IWorkbenchWindow window) {
+		return getDebugContextManager().getContextService(window);
 	}
 }
