@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
    <feature id="pm.eclipse.shutdownbutton">
-      <category name="pm.eclipse.shutdownbutton" />
+      <category name="pm.eclipse.shutdownbutton"/>
    </feature>
-   <category-def name="pm.eclipse.shutdownbutton" label="Shutdown Button">
-      <description>
-         Shutdown button for graceful shutdown of the currently selected process in the Debug view.
-      </description>
-   </category-def>
+   <bundle id="org.apache.commons.exec">
+      <category name="org.apache.commons"/>
+   </bundle>
+   <category-def name="pm.eclipse.shutdownbutton" label="Shutdown Button"/>
+   <category-def name="org.apache.commons" label="Apache Commons Libraries"/>
 </site>
