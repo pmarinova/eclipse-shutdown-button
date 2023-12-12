@@ -5,7 +5,7 @@
       version="1.0.0.qualifier">
 
    <description>
-      Shutdown button plug-in.
+      Shutdown button for graceful shutdown of the currently selected process in the Debug view.
    </description>
 
    <requires>
