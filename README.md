@@ -29,3 +29,12 @@ The process id is available via the `${pid}` variable substituted at the time th
 In the example above, the shutdown command is configured to execute [windows-kill](https://github.com/ElyDotDev/windows-kill),
 an open source utility tool for Windows, which can be used to send an interrupt signal to the specified process id.
 Under Linux and MacOS the default shutdown command is `kill -INT ${pid}`.
+
+## Installation
+
+The Shutdown button plug-in requires minimum Eclipse Platform v4.23 (2022-03).
+
+Download the plug-in p2 repository from the [latest release](https://github.com/pmarinova/eclipse-shutdown-button/releases/latest)
+and install the plug-ins from the repository archive:
+
+![Screenshot of plug-in installation.](/screenshots/shutdown_button_installation.png)
